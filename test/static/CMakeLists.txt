@@ -53,6 +53,7 @@ add_library(
     isq_angle_test.cpp
     isq_test.cpp
     limits_test.cpp
+    overflow_safety_test.cpp
     natural_test.cpp
     photometric_test.cpp
     prime_test.cpp

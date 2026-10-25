@@ -29,6 +29,12 @@
 #if MP_UNITS_HOSTED
 #include <mp-units/utility/cartesian_vector.h>
 #endif
+#ifdef MP_UNITS_IMPORT_STD
+import std;
+#else
+#include <functional>
+#include <type_traits>
+#endif
 
 namespace {
 
@@ -55,10 +61,12 @@ static_assert(isq::dynamic_viscosity(10 * P) == isq::dynamic_viscosity(1 * si::p
 static_assert(isq::kinematic_viscosity(10'000 * St) == isq::kinematic_viscosity(1 * square(si::metre) / si::second));
 static_assert(isq::wavenumber(1 * K) == isq::wavenumber(100 / si::metre));
 
-static_assert(10'000'000 * erg + 1 * si::joule == 2 * si::joule);
-static_assert(1 * si::joule + 10'000'000 * erg == 2 * si::joule);
-static_assert(is_of_type<10'000'000 * erg + 1 * si::joule, quantity<erg, int>>);
-static_assert(is_of_type<1 * si::joule + 10'000'000 * erg, quantity<erg, int>>);
+// J -> erg is x10^7: in int, the sum overflows from 215 J on, so it needs a 64-bit representation
+static_assert(10'000'000LL * erg + 1LL * si::joule == 2LL * si::joule);
+static_assert(1LL * si::joule + 10'000'000LL * erg == 2LL * si::joule);
+static_assert(is_of_type<10'000'000LL * erg + 1LL * si::joule, quantity<erg, long long>>);
+static_assert(is_of_type<1LL * si::joule + 10'000'000LL * erg, quantity<erg, long long>>);
+static_assert(!std::is_invocable_v<std::plus<>, quantity<erg, int>, quantity<si::joule, int>>);
 
 static_assert(1 * K + 100 / si::metre == 2 * K);
 static_assert(100 / si::metre + 1 * K == 2 * K);

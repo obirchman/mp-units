@@ -40,6 +40,7 @@ import std;
 #else
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <type_traits>
@@ -1394,7 +1395,11 @@ static_assert(is_of_type<1 * rad + 1. * deg, quantity<common_unit<struct si::deg
 static_assert(is_of_type<1. * rad + 1. * deg, quantity<common_unit<struct si::degree, struct si::radian>{}, double>>);
 
 // Physical constants
-static_assert(1 * si::si2019::speed_of_light_in_vacuum + 10 * isq::speed[m / s] == 299'792'468 * isq::speed[m / s]);
+// c -> m/s is x299'792'458: in int, the sum overflows from 8 c on, so it needs a 64-bit representation
+static_assert(1LL * si::si2019::speed_of_light_in_vacuum + 10LL * isq::speed[m / s] ==
+              299'792'468LL * isq::speed[m / s]);
+static_assert(!std::is_invocable_v<std::plus<>, quantity<si::si2019::speed_of_light_in_vacuum, int>,
+                                   quantity<isq::speed[m / s], int>>);
 
 // Implicit conversions allowed between quantities of `convertible` references
 [[maybe_unused]] constexpr quantity<isq::speed[km / h]> speed = 120 * isq::length[km] / (2 * isq::duration[h]);

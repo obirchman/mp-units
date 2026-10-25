@@ -71,7 +71,7 @@ void si_example()
   const QuantityOf<isq::mass> auto m1 = 3. * GeV / c2;
   const quantity E = total_energy(p1, m1, 1 * c);
 
-  std::cout << "\n*** SI units (c = " << c << " = " << (1 * c).in(si::metre / s) << ") ***\n";
+  std::cout << "\n*** SI units (c = " << c << " = " << (1LL * c).in(si::metre / s) << ") ***\n";
 
   std::cout << "\n[in `GeV` and `c`]\n"
             << "p = " << p1 << "\n"

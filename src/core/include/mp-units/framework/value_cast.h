@@ -40,6 +40,9 @@
 #ifdef MP_UNITS_IMPORT_STD
 import std;
 #else
+#include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <type_traits>
 #endif
 #endif
@@ -67,6 +70,32 @@ template<typename Rep, Unit UFrom, Unit UTo>
     // if the representation is not totally ordered with std::uintmax_t or does not have max() defined
     // then we assume that it might store any value
     return false;
+}
+
+#ifndef MP_UNITS_OVERFLOW_SAFETY_THRESHOLD
+// Largest magnitude that an implicit conversion between integer quantities must convert without
+// overflow. 2147 (2^31 / 10^6) is the threshold of the "overflow safety surface" of the Au library.
+#define MP_UNITS_OVERFLOW_SAFETY_THRESHOLD 2147
+#endif
+
+// Returns true if scaling from UFrom to UTo overflows the integer type ToRep for a source value
+// with a magnitude up to MP_UNITS_OVERFLOW_SAFETY_THRESHOLD, or up to the largest FromRep value
+// when that is smaller. For example, km -> m (x1000) overflows std::int16_t from 33 km on, so it is
+// not implicit for std::int16_t, but it is for int (overflow from 2'147'484 km on).
+template<typename FromRep, typename ToRep, Unit UFrom, Unit UTo>
+[[nodiscard]] consteval bool scaling_overflows_small_values(UFrom, UTo)
+{
+  if constexpr (std::is_same_v<UFrom, UTo> || !std::is_integral_v<ToRep>)
+    return false;
+  else {
+    const auto factor =
+      try_get_value<std::uintmax_t>(numerator(get_canonical_unit(UFrom{}).mag / get_canonical_unit(UTo{}).mag));
+    if (!factor.has_value()) return true;
+    std::uintmax_t limit = MP_UNITS_OVERFLOW_SAFETY_THRESHOLD;
+    if constexpr (std::is_integral_v<FromRep>)
+      limit = std::min<std::uintmax_t>(limit, static_cast<std::uintmax_t>(std::numeric_limits<FromRep>::max()));
+    return *factor > static_cast<std::uintmax_t>(std::numeric_limits<ToRep>::max()) / limit;
+  }
 }
 
 template<auto FromU, auto ToU, typename Rep>
@@ -158,8 +187,10 @@ MP_UNITS_EXPORT_BEGIN
  * @brief Controls whether conversion from `quantity<FromUnit, FromRep>` to
  *        `quantity<ToUnit, ToRep>` is implicit or explicit.
  *
- * The default is `true` iff the scaling is non-truncating: either `ToRep` is floating-point,
- * or both reps are non-floating-point and the unit magnitude ratio is an integral factor.
+ * The default is `true` iff the scaling is non-truncating and, for integer `ToRep`, does not
+ * overflow small values: either `ToRep` is floating-point, or both reps are non-floating-point,
+ * the unit magnitude ratio is an integral factor, and values with a magnitude up to
+ * `MP_UNITS_OVERFLOW_SAFETY_THRESHOLD` (default 2147) convert without overflowing `ToRep`.
  *
  * Specialize this variable template to customize the implicit/explicit decision for
  * your own representation types.
@@ -171,7 +202,9 @@ MP_UNITS_EXPORT_BEGIN
  */
 template<Unit auto FromUnit, typename FromRep, Unit auto ToUnit, typename ToRep>
 constexpr bool implicitly_scalable =
-  treat_as_floating_point<ToRep> || (!treat_as_floating_point<FromRep> && is_integral_scaling(FromUnit, ToUnit));
+  treat_as_floating_point<ToRep> ||
+  (!treat_as_floating_point<FromRep> && is_integral_scaling(FromUnit, ToUnit) &&
+   !detail::scaling_overflows_small_values<FromRep, ToRep>(FromUnit, ToUnit));
 
 /**
  * @brief Explicit cast of a quantity's unit

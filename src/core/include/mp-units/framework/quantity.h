@@ -1054,8 +1054,10 @@ public:
     noexcept(noexcept(quantity_like_traits<Q>::from_numerical_value(numerical_value_is_an_implementation_detail_)) &&
              std::is_nothrow_copy_constructible_v<rep>)
   {
+    // scale in the representation of Q, as the constraint checks: `std::chrono::nanoseconds(1 * s)`
+    // scales an `int` second into the 64-bit count of `nanoseconds`, not into an `int`
     return quantity_like_traits<Q>::from_numerical_value(
-      numerical_value_in(get_unit(quantity_like_traits<Q>::reference)));
+      detail::quantity_like_type<Q>(*this).numerical_value_is_an_implementation_detail_);
   }
 
   // member unary operators

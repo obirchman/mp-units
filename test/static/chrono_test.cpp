@@ -140,6 +140,8 @@ static_assert(quantity<s>{1ms} == 1 * ms);
 // conversion to chrono
 static_assert(std::chrono::nanoseconds(quantity{1 * ns}) == 1ns);
 static_assert(std::chrono::nanoseconds(quantity{1 * s}) == 1s);
+// scaled in the 64-bit representation of std::chrono::nanoseconds: 5'000'000'000 does not fit an int
+static_assert(std::chrono::nanoseconds(quantity{5 * s}) == 5s);
 
 // operators
 static_assert([q = 1 * s]() mutable { return q += quantity{1s}; }() == 2 * s);

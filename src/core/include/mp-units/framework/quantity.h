@@ -338,10 +338,12 @@ template<typename Q1, typename Q2, typename Cmp>
   using ct_rep = value_type_t<typename ct::rep>;
   // `fallback_cmp` is a lambda so it can be invoked from either branch below — a bare fallthrough
   // `return` after the `if constexpr` chain would trip MSVC Debug C4702 ("unreachable code") on
-  // instantiations where the optimization branch returns.
-  auto fallback_cmp = [&] {
-    const ct ct_lhs(lhs);
-    const ct ct_rhs(rhs);
+  // instantiations where the optimization branch returns. It is generic, so its body is only
+  // instantiated where it is called: the conversion to the common type it performs may not be
+  // allowed when the widened comparison is used instead.
+  auto fallback_cmp = [&](const auto& l, const auto& r) {
+    const ct ct_lhs(l);
+    const ct ct_rhs(r);
     MP_UNITS_DIAGNOSTIC_PUSH
     MP_UNITS_DIAGNOSTIC_IGNORE_FLOAT_EQUAL
     return cmp(ct_lhs.numerical_value_ref_in(ct::unit), ct_rhs.numerical_value_ref_in(ct::unit));
@@ -356,10 +358,10 @@ template<typename Q1, typename Q2, typename Cmp>
       return cmp(scale<wide_t>(lhs_m, lhs.numerical_value_is_an_implementation_detail_),
                  scale<wide_t>(rhs_m, rhs.numerical_value_is_an_implementation_detail_));
     } else {
-      return fallback_cmp();
+      return fallback_cmp(lhs, rhs);
     }
   } else {
-    return fallback_cmp();
+    return fallback_cmp(lhs, rhs);
   }
 }
 
